@@ -1,0 +1,117 @@
+
+Alluxio
+	Tachyon 前身的名字  超光速粒子
+	以内存为中心的分布式文件系统
+		HDFS、S3....
+	介于计算层和存储层之间	
+		计算层：Spark、Flink、MapReduce
+	存储层在内存中的一个Cache系统
+	Spark/Alluxio：AMPLab
+	2012/12 0.1.0
+	将计算和存储分离    移动计算优于移动数据
+
+
+能够为我们带来什么？？？
+
+	Flink能否替代Spark成为第三代/新一代执行引擎？
+	Hadoop真的凉了吗？那我还有必须学习Hadoop吗？
+	Flume吞吐量多少？Spark Application放多少资源？
+	如何保证数据不丢失
+
+	自动动手测试一下
+
+	时效性的要求是越来越高的
+
+	基于内存  Memory is King   Spark Flink
+
+	两面性
+
+1） 2 Spark Application 需要共享数据，必须通过写XX操作
+2）基于JVM对数据进行缓存
+	Spark Application = 1 Driver + N executor
+3）2 Spark Application操作相同的数据 
+	HDFS ==> WC ==> SINK
+	HDFS ==> XXX ==> SINK
+
+
+Alluxio不是Apache的顶级项目  
+	https://www.alluxio.io/
+	https://github.com/Alluxio/alluxio
+
+
+特点：
+1）原生的API和文件系统的非常类似
+2）兼容性   Hadoop   Spark  Flink
+3）列式 
+4）底层文件系统是可插拔的   
+5）Web UI
+6）Command line interaction  
+	hadoop/hdfs fs -ls ...
+	alluxio fs ....
+
+
+
+
+
+Spark 两个不同角度的应用进行实战
+	Spark 离线
+	Spark 实时
+
+
+
+
+Alluxio部署
+	1）下载
+	2）解压到app
+	3）配置到系统环境变量
+	4）conf/
+		alluxio-site.properties
+		masters
+		workers
+	5）格式化
+	6）启动
+	7）hadoop000:19999 可以看到Alluxio的Web UI
+
+
+
+Alluxio常用的命令行参数
+	alluxio fs
+		ls lsr mkdir cat 
+		copyFromLocal copyToLocal mv
+		pin 
+		count  location
+
+
+Alluxio和HDFS整合
+
+
+
+Alluxio和MapReduce整合
+
+hadoop jar hadoop-mapreduce-examples-2.6.0-cdh5.15.1.jar wordcount -libjars /home/hadoop/app/alluxio-1.8.1/client/alluxio-1.8.1-client.jar alluxio://hadoop000:19998/alluxio/wc/input/hello.txt alluxio://hadoop000:19998/alluxio/wc/output
+
+
+
+Alluxio和Spark整合
+
+
+做了这几个与Alluxio的整合，业务逻辑根本没有发生变化，只是:
+1) 环境上变化
+2) hdfs ==> alluxio
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,400 @@
+
+
+
+
+
+项目背景
+    离线+实时  基于Spark(RDD/SQL/Streaming)
+    基于慕课网的访问日志进行统计分析
+        访问日志：离线  HBase
+            点击流日志：
+            搜索：关键字
+        订单数据日志：实时  Redis
+
+        统计：不同需求/业务+根据不同的维度进行统计
+            今天：新增了多少注册会员、订单量多少、订单金额多少？
+            今天和昨天对比：增长？减少？百分比
+            会员
+            订单
+            运营商/地市
+
+
+离线项目的架构/处理流程
+    数据采集：落地到HDFS  外部将数据采集到内部
+        SDK数据==>日志==>Hadoop
+        Server日志：Flume、Logstash
+        数据库：Sqoop
+        提供给你们采集过来的数据，直接存放在HDFS上即可，后续的所有操作都是基于这份数据进行的
+    (*****)数据预处理/数据清洗： 脏/乱数据 ==> 数据规整化（RDD/DF/DS）
+        [30/Jan/2019:00:00:21 +0800] ==> 时间解析
+        按照指定的分隔符进行拆分
+        加字段
+            ip==>城市、运营商、经纬度
+        减字段
+        使用技术：Spark
+        HDFS ==> Spark ==> HBase
+    (*****)数据入库：把规整化的数据写入到存储(HBase)
+        Hive、HBase、Redis......
+        使用技术：HBase
+        rowkey设计
+        cf
+        column
+    (*****)数据分析
+        出报表的核心所在
+        统计分析结果可以找个地方存储起来
+        使用技术：Spark
+        HBase ==> MapReduce/Spark ==> 业务逻辑分析(代码)  ==> DB
+        HBase ==> Hive/Spark SQL  ==> SQL ==> DB
+
+    数据展示：将分析所得到的数据进行可视化显示
+        使用技术：HUE、Zeppelin、Echarts、自研
+
+
+离线项目中要统计的指标/需求
+    1）区域统计：国家、省份
+    2）终端统计：浏览器、版本号
+    ==> Spark + HBase综合运用  *****
+    两个版本：
+        业务逻辑实现
+        各种性能的优化
+    两种实现
+        Spark Core
+        Spark SQL
+
+
+Spark：
+    日志按照统计需求清洗到HBase表中
+        log ==> df
+        DF  ==> put
+        Spark把put写入到HBase中
+
+    对HBase表中的数据进行维度指标的统计分析操作
+        Spark把HBase中的Result读取出来
+            使用RDD进行统计分析
+            使用DataFrame API进行统计分析
+            使用Spark SQL API进行统计分析
+
+next：对这章的内容进行优化和重构
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+UserAgent进行处理和统计分析
+    如何解析UserAgent的信息呢？
+        自己开发：麻烦
+        首先想到的是Github，是不是已经有开源的解析处理的工程呢？
+        https://github.com/chetan/UASparser
+    操作系统信息、浏览器信息
+
+
+统计各个省份、地市的访问信息
+    需要根据IP进行解析
+        开源：纯真（有兴趣的，自己去尝试使用纯真进行解析）
+        生产：收费 ，会定时更新IP库、直接调用人家公司提供的IP解析API就可以的
+    调用Spark的方法，内部已经给你们集成好的
+
+
+
+
+Spark+HBase+Redis综合使用，pom.xml中需要添加一些框架的依赖
+
+
+
+
+部署：Spark安装包请使用我提供的spark-2.4.2-bin-2.6.0-cdh5.15.1.tgz
+开发(IDEA/Maven)
+    spark-2.4.2-bin-2.6.0-cdh5.15.1/jars/spark-sql_2.11-2.4.2.jar
+    需要把这个包拷贝到你的maven仓库中去(/Users/rocky/maven_repos/org/apache/spark/spark-sql_2.11/2.4.2)
+        1) 需要把仓库里面原有的spark-sql的jar删除
+        2) 把我们提供的部署包里面的spark-sql..jar 拷贝到maven仓库对应的目录中
+
+
+配置文件: resources/params.properties
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1）前一章内容：统计、分析 服务器上运行
+2）开发的ETL代码还需要进行优化
+3）分析结果写到数据库
+
+
+服务器上运行Spark作业，肯定需要先搭建Spark环境
+    会提供：spark-2.4.2-bin-2.6.0-cdh5.15.1.tgz
+    Spark on YARN
+        local、standalone、yarn、mesos、k8s
+        不管以什么方式运行都和代码没有关系的，只是提交作业时master指定下就OK了
+    QA：Spark on YARN的执行流程以及运行模式的区别（client vs cluster）
+
+
+
+
+提交ETL Spark作业运行的时候，需要传递一个day：20190808
+    这个时间可以使用date命令来获取
+    离线作业，一般是今天凌晨跑昨天的数据(crontab)  day-1
+
+
+Spark作业的提交
+    判断shell脚本传递进来的参数是否有一个：day
+        if(args.length != 1) {
+          println("Usage: ImoocLogApp <time>")
+          System.exit(1)
+        }
+    代码重构
+    编程编译
+    jar传到服务器
+    提交脚本
+        HBase依赖的jar   jars
+        UAParse依赖的jar  packages
+        day
+
+    如何使得Spark on YARN申请资源提速
+
+--packages是需要去中央仓库下载你所需要的jar的dependency，生产上的机器你能上网吗？
+如果不能？那怎么办？===> Spark作业就没办法运行了....
+
+
+
+
+
+将统计结果写入到MySQL中
+    1）pom.xml中添加mysql driver的dependency
+    2）创建统计结果存储的MySQL表
+    3）RDD ==> MySQL
+
+create table if not exists browser_stat(
+day varchar(10) not null,
+browser varchar(100) not null,
+cnt int
+) engine=innodb default charset=utf8;
+
+
+
+重跑的问题的fix
+
+"导数据工程师"  "修数据工程师"
+
+
+JDBC的写入数据到MySQL
+DataFrame/Dataset的数据通过format("jdbc")直接写入到MySQL是不是更方便呢？
+
+
+
+
+ETL整个过程现在还是存在一些低效的问题
+
+DF.rdd.map(x=>{
+    row ==> Put ==> conf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
+})
+
+HBase架构图
+
+WAL：Write-ahead log 预写日志
+    灾难恢复，一旦服务器崩溃，通过重放log，我们就可以恢复之前的数据
+    如果写入WAL失败，整个操作也就认为是失败
+    写操作性能会降低
+    不写WAL，手工刷新memstore的数据落地
+
+
+YARN的RM挂了，RM HA ==> 就有效吗？如何还能提交作业呢？？？
+千万不要使用阿里云、腾讯云的乞丐版
+1g1c(玩玩Linux)
+    NN DN RM NM
+    Spark Executor...
+
+
+
+
+更好的方式：
+DF.rdd.map(x=>{
+    row ==> Put ==> conf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
+})
+
+HFile是HBase底层的存储数据的格式
+  ??? 直接使用Spark将DF/RDD的数据生成HFile文件，数据Load到HBase里呢
+
+优化点：生成HFile，load进来
+
+
+现在数据已经存储在HBase了，后面统计分析的Spark作业，是否在统计分析的时候直接查询HFile文件呢？
+
+
+写数据
+    Put
+    disable wal
+    hfile
+
+读数据
+    RDD
+    Spark SQL/DF/DS
+
+
+
+Spark HBase架构带来的好处是什么？是否存在不便的地方？如果有不便的地方，如何改进？？
+
+
+
+
+
+
+
+基于Spark的流处理框架
+项目背景：
+    离线处理/批处理：慕课网的访问日志：点击、搜索
+    实时处理：订单日志
+        谁、什么时候、下单了什么课程、支付、IP（运营商、地市）、UA
+
+
+流处理系统
+    Spark Streaming
+    Structured Streaming  *****
+    Flink
+    Storm
+    Kafka Stream
+
+
+项目架构及处理流程
+    log==>Flume==>Kafka==>SparkStreaming(Direct)==>Redis
+    实时：代码来生成订单日志==>Kafka==>SparkStreaming(Direct)==>Redis
+    离线：HDFS==>Spark==>HBase
+
+公司大数据团队的分工：采集、批处理、实时处理、API、前端
+
+
+项目需求
+1）统计每天付费成功的总订单数、订单总金额
+2）统计每个小时付费成功的总订单数、订单金额
+==>统计每分钟付费成功的总订单数、订单金额
+==>统计基于Window付费成功的总订单数、订单金额
+==>付费订单占到总下单的占比：天、小时、分钟
+
+不能拘泥于某个具体的需求，而因为从一类场景中进行拓展/扩展，进而举一反三，才能达到更好的学习效果
+
+Spark Streaming来进行统计分析，分析结果我们需要写入到Redis（数据类型的合适选择）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Spark Streaming&Kafka&Redis整合
+
+离线项目：访问日志
+实时项目：付费日志
+    下单，但是没付钱
+    下单，付钱
+    time,userid,courseid,orderid,fee
+    json格式提供
+
+SparkStreaming读取Kafka的数据，通过fastjson的方式把我们所需要的字段解析出来
+根据我们的业务逻辑实现功能：代码的重构，好好理解下
+根据不同的业务选择合适的Redis的数据类型进行存储即可
+
+我们的职责是把数据存储到Redis就行了，对于后续还有展示的功能，我们不考虑这部分的实现
+
+我就不打包了到服务器上运行了，
+作业：自己根据离线项目的讲解，把实时项目打包到服务器上运行
+如果有疑问的，到时候加入到我们课程的QQ群里，我们一起来交流和讨论
+
+彩蛋：这们课程我们会定时在课程群里，安排直播答疑
+
+"auto.offset.reset" -> "latest"
+如果Spark挂了，Kafka还在运行的话，可能会有数据的丢失
+Kafka offset管理起来
+
+
+StreamingContext
+从Kafka中获取要处理的数据
+根据业务来处理数据
+处理结果入库
+启动程序，等待程序终止
+
+挂了：kafka的数据到底是从头开始还是从最新数据开始
+
+正确的做法：
+    第一次应用程序启动的时候，要从某个地方获取到已经消费过的offset
+    业务逻辑处理完之后，应该要把已经处理完的offset给它保存到某个地方去
+
+
+offset存储的地方
+    Checkpoint
+    Kafka
+    ZK/MySQL/HBase/Redis
+
+作业：把offset管理起来
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
